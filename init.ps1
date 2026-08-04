@@ -1,0 +1,343 @@
+# ============================================================
+# 为薪发声——AI劳动维权助手 | 全自动工程初始化脚本
+# 腾讯开悟 D06 | 参赛编号 T2606890
+# 使用方法：在 PowerShell 中直接运行此脚本即可
+# ============================================================
+
+$ErrorActionPreference = "Stop"
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  为薪发声——AI劳动维权助手 工程初始化" -ForegroundColor Cyan
+Write-Host "  腾讯开悟 D06 | T2606890" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+# --- 第一步：定义路径 ---
+$TOP = "D:\WeGameApps\downloading\T2606890-法律ai-【D06】法律AI应用创新与实践【腾讯开悟】-源码文件"
+$ROOT = "$TOP\law-ai-app"
+$FRONT = "$ROOT\Front\Vue3\law‑ai"
+$DOCS = "$ROOT\docs"
+$WF = "$ROOT\workflow"
+$KB = "$ROOT\knowledge‑base"
+
+# --- 第二步：创建标准目录结构 ---
+Write-Host "`n[1/6] 创建标准目录结构..." -ForegroundColor Yellow
+@($ROOT, $FRONT, $DOCS, $WF, $KB) | ForEach-Object {
+    New-Item -ItemType Directory -Force -Path $_ | Out-Null
+    Write-Host "  + $_"
+}
+Write-Host "  目录结构创建完成" -ForegroundColor Green
+
+# --- 第三步：迁移 Vue3 前端源码 ---
+Write-Host "`n[2/6] 迁移 Vue3 前端源码到 Front/Vue3/law‑ai/..." -ForegroundColor Yellow
+$sourceItems = @('.vscode', 'public', 'src', 'index.html', 'jsconfig.json', 'package.json', 'package-lock.json', 'vite.config.js')
+foreach ($item in $sourceItems) {
+    $srcPath = "$TOP\$item"
+    $destPath = "$FRONT\$item"
+    if (Test-Path $srcPath) {
+        if (Test-Path $destPath) { Remove-Item -Recurse -Force $destPath }
+        Move-Item -Path $srcPath -Destination $destPath -Force
+        Write-Host "  Moved: $item"
+    } else {
+        Write-Host "  Skip (not found): $item"
+    }
+}
+
+# 迁移 example 目录到 workflow
+$exampleDir = "$TOP\example"
+if (Test-Path $exampleDir) {
+    Get-ChildItem $exampleDir | ForEach-Object {
+        Move-Item -Path $_.FullName -Destination "$WF\" -Force
+        Write-Host "  Moved: example/$($_.Name) -> workflow/"
+    }
+    Remove-Item $exampleDir -Force -ErrorAction SilentlyContinue
+}
+
+# 迁移 PDF 文档到 docs
+Get-ChildItem $TOP -Filter "*.pdf" -ErrorAction SilentlyContinue | ForEach-Object {
+    Move-Item -Path $_.FullName -Destination "$DOCS\" -Force
+    Write-Host "  Moved doc: $($_.Name)"
+}
+
+Write-Host "  源码迁移完成" -ForegroundColor Green
+
+# --- 第四步：生成 README.md ---
+Write-Host "`n[3/6] 生成 README.md..." -ForegroundColor Yellow
+$readmeContent = @'
+# 为薪发声——AI劳动维权助手
+
+> **参赛编号**：T2606890 | **赛道名称**：腾讯开悟 D06 法律AI应用创新与实践赛道
+
+---
+
+## 🎯 项目简介
+
+当前我国劳动争议案件数量逐年攀升，大量劳动者因缺乏法律知识、无力承担律师费用而在权益受损时选择沉默。**为薪发声——AI劳动维权助手** 是一款面向劳动者的垂直领域法律AI系统，基于腾讯元器双智能体工作流构建，覆盖从案情咨询到文书生成的全链路维权服务，致力于降低劳动者维权门槛，让每一个劳动者都能低成本、高效率地维护自身合法权益。
+
+---
+
+## ✨ 核心功能
+
+1. **案情智能咨询** — 用户以自然语言描述自身遭遇，系统通过引导式对话快速厘清法律关系、判定争议类型，并结合知识库给出法律依据与维权建议。
+2. **劳动合同风险审查** — 上传或输入劳动合同文本，系统自动识别违法条款、模糊表述与缺失项，逐条标注风险等级并给出修改建议。
+3. **劳动仲裁法律文书自动生成** — 基于用户案件信息，一键生成符合规范的仲裁申请书、证据清单、赔偿计算表等法律文书。
+4. **劳动裁判类案检索** — 依据案由、关键词、地域等维度检索历史裁判案例，辅助用户预判诉求是否具有法律支撑并估算合理赔偿区间。
+
+---
+
+## 🏗️ 技术架构
+
+本项目采用四层技术架构：
+
+### 交互层（Presentation Layer）
+- **Vue3 + Pinia + Vue Router** 构建单页应用（SPA），部署于腾讯 Cloud Studio。
+- 提供案情咨询对话界面、合同上传与风险标注面板、文书编辑器、案例检索看板四大功能模块。
+
+### 网关路由层（API Gateway）
+- 负责前端请求的统一鉴权、路由分发与速率限制。
+- 将不同业务请求路由至对应的智能体工作流。
+
+### 腾讯元器双智能体引擎层（Agent Engine Layer）
+
+| 智能体 | 职责 |
+|--------|------|
+| **咨询与检索智能体** | 负责案情智能咨询、劳动法规问答、类案检索三大功能。集成法律法规知识库与裁判案例知识库，通过多轮对话理解案情并返回结构化的咨询结果。 |
+| **审查与生成智能体** | 负责劳动合同风险审查与仲裁文书自动生成两大功能。集成文书模板知识库，可解析合同文本并标注风险点，同时根据用户填写的案件参数自动组装符合司法规范的仲裁申请书、证据清单等文书。 |
+
+### 结构化输出层（Structured Output Layer）
+- 对智能体输出进行格式标准化、合规校验与前端渲染适配。
+- 文书输出支持 Markdown 与 PDF 双格式。
+
+### 三大知识库
+
+| 知识库 | 用途 |
+|--------|------|
+| 法律法规库 | 涵盖《劳动法》《劳动合同法》《社会保险法》《工伤保险条例》等核心法律法规全文及司法解释，支撑咨询问答与风险审查。 |
+| 裁判案例库 | 收录各地区劳动仲裁委员会与人民法院的典型劳动裁判案例，支撑类案检索与诉求评估。 |
+| 文书模板库 | 汇集仲裁申请书、起诉状、证据清单、赔偿计算表等标准化法律文书模板，支撑文书自动生成。 |
+
+---
+
+## 🛠️ 腾讯全系工具栈
+
+- **腾讯元器** — 承载双智能体工作流引擎，提供大模型调用、知识库挂载、工作流编排、API 网关等核心能力。
+- **Cloud Studio（CodeBuddy）** — 腾讯云端 IDE，用于前端工程开发、调试与部署。本项目的 Vue3 源码全程在 Cloud Studio 中编写与构建。
+- **腾讯开悟平台** — 本届竞赛的官方运营平台，提供赛事管理、作品提交、评审支持等服务。
+
+---
+
+## 🔗 在线资源
+
+| 资源 | 地址 |
+|------|------|
+| 在线 Demo | 【请替换为实际链接】 |
+| 腾讯元器智能体后台 | 【请替换为实际链接】 |
+| 项目说明文档 | [/docs/说明文件.pdf](./docs/说明文件.pdf) |
+| 作品 Demo 文档 | [/docs/作品Demo文件.pdf](./docs/作品Demo文件.pdf) |
+
+---
+
+## 📁 仓库目录结构
+
+```
+law-ai-app/
+├── Front/Vue3/law‑ai      # Cloud Studio Vue3 前端完整源码
+├── docs/                   # 竞赛交付材料：项目说明PDF、系统架构图、功能界面截图
+├── workflow/               # 腾讯元器工作流描述、全套业务Prompt文本
+├── knowledge‑base/         # 法规库、裁判案例素材、仲裁文书模板素材
+├── README.md               # 项目主页文档
+├── LICENSE                 # MIT 开源许可证
+└── .gitignore
+```
+
+---
+
+## 🚀 部署指南
+
+### 本地开发环境
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/fx517/law-ai-app.git
+cd law-ai-app/Front/Vue3/law‑ai
+
+# 2. 安装依赖
+npm install
+
+# 3. 启动本地开发服务器
+npm run dev
+```
+
+启动后默认访问 `http://localhost:5173`（端口以终端输出为准）。
+
+### Cloud Studio 云端部署
+
+1. 登录 [Cloud Studio](https://cloudstudio.net/)。
+2. 点击「新建工作空间」，选择「从 Git 仓库导入」。
+3. 填入仓库地址 `https://github.com/fx517/law-ai-app.git`。
+4. 工作空间创建完成后，在终端中执行：
+
+```bash
+cd Front/Vue3/law‑ai
+npm install
+npm run dev
+```
+
+5. Cloud Studio 将自动生成可公网访问的预览链接。
+
+---
+
+## 👥 团队成员与分工
+
+| 姓名 | 角色 | 职责 |
+|------|------|------|
+| 【待填写】 | 项目负责人 | 整体架构设计、项目进度管理 |
+| 【待填写】 | 前端开发 | Vue3 前端界面开发、交互逻辑实现 |
+| 【待填写】 | 智能体开发 | 腾讯元器双智能体工作流设计与 Prompt 工程 |
+| 【待填写】 | 知识库构建 | 法律法规库、裁判案例库、文书模板库的整理与结构化 |
+| 【待填写】 | 文档与测试 | 竞赛文档撰写、系统测试与功能验证 |
+
+---
+
+## 💡 项目创新亮点
+
+1. **服务模式创新** — 面向劳动维权这一垂直场景，打通"咨询→审查→类案→文书"完整链路，将传统需要律师介入的多环节服务浓缩为一站式AI工具，真正降低劳动者维权门槛。
+2. **双智能体技术架构创新** — 将"咨询检索"与"审查生成"解耦为两个独立智能体，各自挂载专属知识库，避免单一智能体在多任务场景下的意图混淆问题，显著提升各功能模块的输出质量。
+3. **工程落地范式创新** — 全链路基于腾讯生态工具（元器 + Cloud Studio + 开悟平台）实现快速开发与部署，证明了"腾讯元器智能体 + Cloud Studio 前端"这一组合在垂直法律AI应用中的可行性与高效率。
+
+---
+
+## 📄 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源。
+'@
+[System.IO.File]::WriteAllText("$ROOT\README.md", $readmeContent, [System.Text.UTF8Encoding]::new($false))
+Write-Host "  README.md 生成完毕" -ForegroundColor Green
+
+# --- 第五步：生成 .gitignore ---
+Write-Host "`n[4/6] 生成 .gitignore..." -ForegroundColor Yellow
+$gitignoreContent = @'
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+build/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+!*.env.example
+
+# IDE and editor config
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache
+.cache/
+*.tsbuildinfo
+*.cache
+.vite/
+.vite-temp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Lock files (keep package-lock.json for reproducibility)
+# yarn.lock
+# pnpm-lock.yaml
+
+# Debug
+*.pdb
+
+# Optional: Local netlify folder
+.netlify
+'@
+[System.IO.File]::WriteAllText("$ROOT\.gitignore", $gitignoreContent, [System.Text.UTF8Encoding]::new($false))
+Write-Host "  .gitignore 生成完毕" -ForegroundColor Green
+
+# --- 第六步：生成 LICENSE ---
+Write-Host "`n[5/6] 生成 LICENSE..." -ForegroundColor Yellow
+$licenseContent = @'
+MIT License
+
+Copyright (c) 2025 为薪发声——AI劳动维权助手
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'@
+[System.IO.File]::WriteAllText("$ROOT\LICENSE", $licenseContent, [System.Text.UTF8Encoding]::new($false))
+Write-Host "  LICENSE 生成完毕" -ForegroundColor Green
+
+# --- 第七步：Git 初始化与推送 ---
+Write-Host "`n[6/6] Git 初始化并推送到 GitHub..." -ForegroundColor Yellow
+Set-Location $ROOT
+
+# 静默删除已有 origin
+git remote remove origin 2>$null
+# 初始化
+git init
+# 设置默认分支 main
+git branch -m main
+# 绑定远程仓库
+git remote add origin https://github.com/fx517/law-ai-app.git
+# 全量添加
+git add .
+# 提交
+git commit -m "feat: 腾讯开悟D06项目完整初始化，提交源码、文档、工程配置"
+# 推送
+git push -u origin main
+
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "  全自动初始化完成！" -ForegroundColor Green
+Write-Host "  仓库地址：https://github.com/fx517/law-ai-app.git" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
